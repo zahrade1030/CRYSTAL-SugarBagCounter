@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.DashPathEffect
+import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.abs
@@ -54,8 +55,10 @@ class DetectionOverlay(context: Context) : View(context) {
         get() = imageH
 
     private val isEnglish: Boolean
-        get() = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-            .getString("language", "fa") == "en"
+        get() = context.getSharedPreferences(
+            "app_settings",
+            Context.MODE_PRIVATE
+        ).getString("language", "fa") == "en"
 
     private var detections: List<Detection> = emptyList()
     private var trackedDetections: List<TrackedDetection> = emptyList()
@@ -67,14 +70,20 @@ class DetectionOverlay(context: Context) : View(context) {
     private val touchThreshold = 40f * density
     private val minimumRoiWidth = 40f
 
+    private val gold = Color.rgb(212, 175, 55)
+    private val lightGold = Color.rgb(245, 215, 130)
+    private val cyan = Color.rgb(40, 220, 230)
+    private val green = Color.rgb(75, 220, 130)
+    private val orange = Color.rgb(255, 165, 55)
+
     private val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.GREEN
+        color = green
         style = Paint.Style.STROKE
         strokeWidth = 3f * density
     }
 
     private val predictedBoxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(255, 165, 0)
+        color = orange
         style = Paint.Style.STROKE
         strokeWidth = 3f * density
         pathEffect = DashPathEffect(
@@ -84,52 +93,73 @@ class DetectionOverlay(context: Context) : View(context) {
     }
 
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.YELLOW
-        strokeWidth = 4f * density
+        color = gold
+        strokeWidth = 3.5f * density
         style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
     }
 
     private val roiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.CYAN
-        strokeWidth = 4f * density
+        color = cyan
+        strokeWidth = 3f * density
         style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
     }
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = 16f * density
+        textSize = 13f * density
         typeface = Typeface.DEFAULT_BOLD
     }
 
     private val labelBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xDD151515.toInt()
+        color = 0xE6191919.toInt()
         style = Paint.Style.FILL
     }
 
     private val lineLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK
-        textSize = 13f * density
+        textSize = 12f * density
         typeface = Typeface.DEFAULT_BOLD
     }
 
     private val lineLabelBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.YELLOW
+        color = gold
         style = Paint.Style.FILL
     }
 
     private val roiLabelBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.CYAN
+        color = cyan
         style = Paint.Style.FILL
     }
 
     private val roiLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK
-        textSize = 13f * density
+        textSize = 12f * density
         typeface = Typeface.DEFAULT_BOLD
     }
 
     private val setupMessageBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x99000000.toInt()
+        color = 0xCC151515.toInt()
+        style = Paint.Style.FILL
+    }
+
+    private val activeLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = lightGold
+        strokeWidth = 5f * density
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    private val roiFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x1830DCE6
+        style = Paint.Style.FILL
+    }
+
+    private val setupHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = gold
+        textSize = 11f * density
+        typeface = Typeface.DEFAULT_BOLD
     }
 
     fun setDetections(
@@ -177,9 +207,12 @@ class DetectionOverlay(context: Context) : View(context) {
         val newW = w.toFloat()
         val newH = h.toFloat()
 
-        if (imageW > 0f && imageH > 0f && (newW != imageW || newH != imageH)) {
+        if (imageW > 0f && imageH > 0f &&
+            (newW != imageW || newH != imageH)
+        ) {
             val scaleX = newW / imageW
             val scaleY = newH / imageH
+
             lineTop *= scaleY
             lineBottom *= scaleY
             roiLeft *= scaleX
@@ -233,6 +266,8 @@ class DetectionOverlay(context: Context) : View(context) {
         val dx = offsetX(scale)
         val dy = offsetY(scale)
 
+        drawRoiArea(canvas, scale, dx, dy)
+
         if (showingTracked) {
             trackedDetections.forEach { tracked ->
                 drawDetection(
@@ -263,6 +298,24 @@ class DetectionOverlay(context: Context) : View(context) {
         drawStatusMessage(canvas)
     }
 
+    private fun drawRoiArea(
+        canvas: Canvas,
+        scale: Float,
+        dx: Float,
+        dy: Float
+    ) {
+        val leftX = roiLeft * scale + dx
+        val rightX = roiRight * scale + dx
+
+        canvas.drawRect(
+            leftX,
+            0f,
+            rightX,
+            height.toFloat(),
+            roiFillPaint
+        )
+    }
+
     private fun drawGuides(
         canvas: Canvas,
         scale: Float,
@@ -275,12 +328,36 @@ class DetectionOverlay(context: Context) : View(context) {
         val leftX = roiLeft * scale + dx
         val rightX = roiRight * scale + dx
 
+        val currentTopPaint = if (dragging == 1) {
+            activeLinePaint
+        } else {
+            linePaint
+        }
+
+        val currentBottomPaint = if (dragging == 2) {
+            activeLinePaint
+        } else {
+            linePaint
+        }
+
+        val currentLeftPaint = if (dragging == 3) {
+            activeLinePaint
+        } else {
+            roiPaint
+        }
+
+        val currentRightPaint = if (dragging == 4) {
+            activeLinePaint
+        } else {
+            roiPaint
+        }
+
         canvas.drawLine(
             0f,
             topY,
             width.toFloat(),
             topY,
-            linePaint
+            currentTopPaint
         )
 
         canvas.drawLine(
@@ -288,7 +365,7 @@ class DetectionOverlay(context: Context) : View(context) {
             bottomY,
             width.toFloat(),
             bottomY,
-            linePaint
+            currentBottomPaint
         )
 
         canvas.drawLine(
@@ -296,7 +373,7 @@ class DetectionOverlay(context: Context) : View(context) {
             0f,
             leftX,
             height.toFloat(),
-            roiPaint
+            currentLeftPaint
         )
 
         canvas.drawLine(
@@ -304,40 +381,86 @@ class DetectionOverlay(context: Context) : View(context) {
             0f,
             rightX,
             height.toFloat(),
-            roiPaint
+            currentRightPaint
         )
 
         drawLineLabel(
             canvas,
-            if (isEnglish) "Count boundary 1" else "مرز شمارش ۱",
+            if (isEnglish) "COUNT LINE 1" else "خط شمارش ۱",
             topY
         )
+
         drawLineLabel(
             canvas,
-            if (isEnglish) "Count boundary 2" else "مرز شمارش ۲",
+            if (isEnglish) "COUNT LINE 2" else "خط شمارش ۲",
             bottomY
         )
 
         drawRoiLabel(
             canvas,
-            if (isEnglish) "ROI start" else "شروع محدوده",
+            if (isEnglish) "ROI START" else "شروع محدوده",
             leftX,
             true
         )
 
         drawRoiLabel(
             canvas,
-            if (isEnglish) "ROI end" else "پایان محدوده",
+            if (isEnglish) "ROI END" else "پایان محدوده",
             rightX,
             false
+        )
+
+        if (isSetup) {
+            drawSetupHint(canvas)
+        }
+    }
+
+    private fun drawSetupHint(canvas: Canvas) {
+        val hint = if (isEnglish) {
+            "DRAG LINES TO ADJUST"
+        } else {
+            "خطوط را لمس کنید و جابه‌جا کنید"
+        }
+
+        val textWidth = setupHintPaint.measureText(hint)
+        val padding = 10f * density
+        val heightHint = 28f * density
+
+        val left = (width - textWidth - padding * 2f) / 2f
+        val top = (height - heightHint - 12f * density)
+            .coerceAtLeast(0f)
+
+        canvas.drawRoundRect(
+            left,
+            top,
+            left + textWidth + padding * 2f,
+            top + heightHint,
+            8f * density,
+            8f * density,
+            setupMessageBackground
+        )
+
+        canvas.drawText(
+            hint,
+            left + padding,
+            top + heightHint / 2f + 4f * density,
+            setupHintPaint
         )
     }
 
     private fun drawStatusMessage(canvas: Canvas) {
         val message = if (isEnglish) {
-            if (isSetup) "Adjust counting lines and ROI" else "Counting active"
+            if (isSetup) {
+                "SETUP MODE"
+            } else {
+                "COUNTING ACTIVE"
+            }
         } else {
-            if (isSetup) "تنظیم خطوط و محدوده شمارش" else "شمارش فعال است"
+            if (isSetup) {
+                "حالت تنظیم"
+            } else {
+                "شمارش فعال"
+            }
         }
 
         val padding = 12f * density
@@ -345,13 +468,13 @@ class DetectionOverlay(context: Context) : View(context) {
 
         val left = 8f * density
         val top = 8f * density
-        val heightMessage = 34f * density
+        val messageHeight = 34f * density
 
         canvas.drawRoundRect(
             left,
             top,
             left + messageWidth + padding * 2f,
-            top + heightMessage,
+            top + messageHeight,
             8f * density,
             8f * density,
             setupMessageBackground
@@ -360,7 +483,7 @@ class DetectionOverlay(context: Context) : View(context) {
         canvas.drawText(
             message,
             left + padding,
-            top + heightMessage / 2f + 5f * density,
+            top + messageHeight / 2f + 5f * density,
             textPaint
         )
     }
@@ -372,7 +495,7 @@ class DetectionOverlay(context: Context) : View(context) {
     ) {
         val padding = 8f * density
         val textWidth = lineLabelPaint.measureText(label)
-        val labelHeight = 26f * density
+        val labelHeight = 25f * density
         val left = 8f * density
 
         val top = (y - labelHeight / 2f).coerceIn(
@@ -383,17 +506,17 @@ class DetectionOverlay(context: Context) : View(context) {
         canvas.drawRoundRect(
             left,
             top,
-            left + textWidth + padding * 2,
+            left + textWidth + padding * 2f,
             top + labelHeight,
-            6f * density,
-            6f * density,
+            7f * density,
+            7f * density,
             lineLabelBackgroundPaint
         )
 
         canvas.drawText(
             label,
             left + padding,
-            top + labelHeight / 2f + 4.5f * density,
+            top + labelHeight / 2f + 4f * density,
             lineLabelPaint
         )
     }
@@ -406,7 +529,7 @@ class DetectionOverlay(context: Context) : View(context) {
     ) {
         val padding = 8f * density
         val textWidth = roiLabelPaint.measureText(label)
-        val labelHeight = 26f * density
+        val labelHeight = 25f * density
         val labelWidth = textWidth + padding * 2f
 
         val desiredLeft = if (isLeft) {
@@ -427,15 +550,15 @@ class DetectionOverlay(context: Context) : View(context) {
             top,
             left + labelWidth,
             top + labelHeight,
-            6f * density,
-            6f * density,
+            7f * density,
+            7f * density,
             roiLabelBackgroundPaint
         )
 
         canvas.drawText(
             label,
             left + padding,
-            top + labelHeight / 2f + 4.5f * density,
+            top + labelHeight / 2f + 4f * density,
             roiLabelPaint
         )
     }
@@ -470,7 +593,11 @@ class DetectionOverlay(context: Context) : View(context) {
 
         val label = when {
             trackId != null && isPredicted ->
-                if (isEnglish) "ID $trackId | Predicted" else "ID $trackId | پیش‌بینی"
+                if (isEnglish) {
+                    "ID $trackId | Predicted"
+                } else {
+                    "ID $trackId | پیش‌بینی"
+                }
 
             trackId != null ->
                 "ID $trackId | ${(detection.confidence * 100).toInt()}%"
@@ -482,7 +609,7 @@ class DetectionOverlay(context: Context) : View(context) {
         val labelWidth =
             textPaint.measureText(label) + 16f * density
 
-        val labelHeight = 28f * density
+        val labelHeight = 27f * density
 
         val labelTop =
             (top - labelHeight - 4f * density).coerceAtLeast(0f)
@@ -497,15 +624,15 @@ class DetectionOverlay(context: Context) : View(context) {
             labelTop,
             safeLeft + labelWidth,
             labelTop + labelHeight,
-            5f * density,
-            5f * density,
+            6f * density,
+            6f * density,
             labelBackgroundPaint
         )
 
         canvas.drawText(
             label,
             safeLeft + 8f * density,
-            labelTop + 19f * density,
+            labelTop + 18.5f * density,
             textPaint
         )
     }
@@ -552,6 +679,8 @@ class DetectionOverlay(context: Context) : View(context) {
 
                 parent?.requestDisallowInterceptTouchEvent(true)
 
+                invalidate()
+
                 return true
             }
 
@@ -589,14 +718,18 @@ class DetectionOverlay(context: Context) : View(context) {
                 }
 
                 invalidate()
+
                 return true
             }
 
             MotionEvent.ACTION_UP -> {
                 val wasDragging = dragging != 0
+
                 dragging = 0
 
                 parent?.requestDisallowInterceptTouchEvent(false)
+
+                invalidate()
 
                 performClick()
 
@@ -605,9 +738,12 @@ class DetectionOverlay(context: Context) : View(context) {
 
             MotionEvent.ACTION_CANCEL -> {
                 val wasDragging = dragging != 0
+
                 dragging = 0
 
                 parent?.requestDisallowInterceptTouchEvent(false)
+
+                invalidate()
 
                 return wasDragging
             }
