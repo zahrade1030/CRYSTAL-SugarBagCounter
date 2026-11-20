@@ -12,9 +12,14 @@ import java.io.ByteArrayOutputStream
 object ImageUtil {
 
     /**
-     * تبدیل ImageProxy به Bitmap
-     * پشتیبانی از YUV_420_888، RowStride و PixelStride
-     * مدیریت چرخش تصویر و آزادسازی حافظه
+     * تبدیل ImageProxy دوربین به Bitmap
+     *
+     * پشتیبانی:
+     * - YUV_420_888
+     * - RowStride
+     * - PixelStride
+     * - چرخش تصویر
+     * - مدیریت حافظه
      */
     fun toBitmap(image: ImageProxy): Bitmap {
 
@@ -23,6 +28,10 @@ object ImageUtil {
 
         require(width > 0 && height > 0) {
             "Invalid camera image dimensions"
+        }
+
+        require(width % 2 == 0 && height % 2 == 0) {
+            "YUV image dimensions must be even"
         }
 
         require(image.format == ImageFormat.YUV_420_888) {
@@ -44,24 +53,29 @@ object ImageUtil {
         val vBuffer = vPlane.buffer.duplicate()
 
         val ySize = width * height
-        val uvSize = width * height / 2
+        val uvSize = ySize / 2
 
         val nv21 = ByteArray(ySize + uvSize)
 
         var outputIndex = 0
 
-        // کانال Y
+        // -----------------------------
+        // Y Channel
+        // -----------------------------
+
+        val yBasePosition = yBuffer.position()
+
         for (row in 0 until height) {
 
             val rowStart =
-                yBuffer.position() + row * yPlane.rowStride
+                yBasePosition + row * yPlane.rowStride
 
             for (col in 0 until width) {
 
                 val index =
                     rowStart + col * yPlane.pixelStride
 
-                if (index >= yBuffer.limit()) {
+                if (index < yBuffer.position() || index >= yBuffer.limit()) {
                     throw IllegalStateException(
                         "Y plane buffer overflow"
                     )
@@ -71,26 +85,35 @@ object ImageUtil {
             }
         }
 
-        // کانال‌های V و U به ترتیب NV21
+        // -----------------------------
+        // UV Channels
+        // NV21 = V followed by U
+        // -----------------------------
+
+        val uBasePosition = uBuffer.position()
+        val vBasePosition = vBuffer.position()
+
         for (row in 0 until height / 2) {
 
             val uRowStart =
-                uBuffer.position() + row * uPlane.rowStride
+                uBasePosition + row * uPlane.rowStride
 
             val vRowStart =
-                vBuffer.position() + row * vPlane.rowStride
+                vBasePosition + row * vPlane.rowStride
 
             for (col in 0 until width / 2) {
-
-                val vIndex =
-                    vRowStart + col * vPlane.pixelStride
 
                 val uIndex =
                     uRowStart + col * uPlane.pixelStride
 
+                val vIndex =
+                    vRowStart + col * vPlane.pixelStride
+
                 if (
-                    vIndex >= vBuffer.limit() ||
-                    uIndex >= uBuffer.limit()
+                    uIndex < uBuffer.position() ||
+                    uIndex >= uBuffer.limit() ||
+                    vIndex < vBuffer.position() ||
+                    vIndex >= vBuffer.limit()
                 ) {
                     throw IllegalStateException(
                         "UV plane buffer overflow"
@@ -101,6 +124,10 @@ object ImageUtil {
                 nv21[outputIndex++] = uBuffer.get(uIndex)
             }
         }
+
+        // -----------------------------
+        // NV21 -> JPEG -> Bitmap
+        // -----------------------------
 
         val yuvImage = YuvImage(
             nv21,
@@ -114,7 +141,7 @@ object ImageUtil {
 
         val compressed = yuvImage.compressToJpeg(
             Rect(0, 0, width, height),
-            90,
+            85,
             jpegOutput
         )
 
@@ -134,37 +161,54 @@ object ImageUtil {
             "Bitmap decoding failed"
         )
 
+        // -----------------------------
+        // Rotate image
+        // -----------------------------
+
         val rotation = image.imageInfo.rotationDegrees
 
-        if (rotation == 0) {
-            return bitmap
-        }
+        if (rotation != 0) {
 
-        val matrix = Matrix().apply {
-            postRotate(rotation.toFloat())
-        }
+            val matrix = Matrix().apply {
+                postRotate(rotation.toFloat())
+            }
 
-        val rotated = Bitmap.createBitmap(
-            bitmap,
-            0,
-            0,
-            bitmap.width,
-            bitmap.height,
-            matrix,
-            true
-        )
+            val rotatedBitmap = try {
 
-        if (rotated !== bitmap) {
-            bitmap.recycle()
-            bitmap = rotated
+                Bitmap.createBitmap(
+                    bitmap,
+                    0,
+                    0,
+                    bitmap.width,
+                    bitmap.height,
+                    matrix,
+                    true
+                )
+
+            } catch (e: Exception) {
+
+                bitmap.recycle()
+
+                throw IllegalStateException(
+                    "Image rotation failed",
+                    e
+                )
+            }
+
+            if (rotatedBitmap !== bitmap) {
+                bitmap.recycle()
+                bitmap = rotatedBitmap
+            }
         }
 
         return bitmap
     }
 
     /**
-     * تبدیل فریم دوربین به Bitmap با رزولوشن کوچک‌تر
-     * برای کاهش مصرف حافظه و پردازش
+     * تبدیل فریم دوربین به Bitmap با رزولوشن کنترل‌شده
+     *
+     * برای کاهش مصرف RAM و پردازش،
+     * ابعاد تصویر از maxDimension بیشتر نمی‌شود.
      */
     fun toBitmapScaled(
         image: ImageProxy,
@@ -186,31 +230,53 @@ object ImageUtil {
             return bitmap
         }
 
-        val scale = maxDimension.toFloat() / largestDimension
+        val scale =
+            maxDimension.toFloat() / largestDimension
 
-        val newWidth = (bitmap.width * scale)
-            .toInt()
-            .coerceAtLeast(1)
+        val newWidth =
+            (bitmap.width * scale)
+                .toInt()
+                .coerceAtLeast(1)
 
-        val newHeight = (bitmap.height * scale)
-            .toInt()
-            .coerceAtLeast(1)
+        val newHeight =
+            (bitmap.height * scale)
+                .toInt()
+                .coerceAtLeast(1)
 
-        val scaled = Bitmap.createScaledBitmap(
-            bitmap,
-            newWidth,
-            newHeight,
-            true
-        )
+        val scaledBitmap = try {
 
-        if (scaled !== bitmap) {
+            Bitmap.createScaledBitmap(
+                bitmap,
+                newWidth,
+                newHeight,
+                true
+            )
+
+        } catch (e: Exception) {
+
+            bitmap.recycle()
+
+            throw IllegalStateException(
+                "Bitmap scaling failed",
+                e
+            )
+        }
+
+        if (scaledBitmap !== bitmap) {
             bitmap.recycle()
         }
 
-        return scaled
+        return scaledBitmap
     }
 
-    private fun max(a: Int, b: Int): Int {
+    /**
+     * محاسبه بزرگ‌ترین مقدار
+     */
+    private fun max(
+        a: Int,
+        b: Int
+    ): Int {
+
         return if (a > b) a else b
     }
 }
