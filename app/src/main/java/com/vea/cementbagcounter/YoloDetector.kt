@@ -65,10 +65,6 @@ class YoloDetector(context: Context) {
 
         val options = OrtSession.SessionOptions().apply {
 
-            setOptimizationLevel(
-                OrtSession.SessionOptions.OptLevel.ALL
-            )
-
             setIntraOpNumThreads(2)
 
             setInterOpNumThreads(1)
