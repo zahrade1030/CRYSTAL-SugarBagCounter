@@ -19,56 +19,95 @@ data class Detection(
     val bottom: Float,
     val confidence: Float
 ) {
-    val cx get() = (left + right) / 2f
-    val cy get() = (top + bottom) / 2f
-    val width get() = right - left
-    val height get() = bottom - top
+    val cx: Float
+        get() = (left + right) / 2f
+
+    val cy: Float
+        get() = (top + bottom) / 2f
+
+    val width: Float
+        get() = right - left
+
+    val height: Float
+        get() = bottom - top
 }
 
 class YoloDetector(context: Context) {
 
     private val env = OrtEnvironment.getEnvironment()
+
     private val session: OrtSession
+
     private val inputName: String
 
     private val inputSize = 416
 
     companion object {
+
         private const val TAG = "YoloDetector"
+
         private const val CONFIDENCE_THRESHOLD = 0.30f
+
         private const val NMS_THRESHOLD = 0.45f
+
         private const val MAX_DETECTIONS = 60
+
         private const val EXPECTED_CLASSES = 1
     }
 
     init {
-        val modelBytes = context.assets.open("best.onnx").use {
-            it.readBytes()
-        }
+
+        val modelBytes = context.assets
+            .open("best.onnx")
+            .use {
+                it.readBytes()
+            }
 
         val options = OrtSession.SessionOptions().apply {
+
             setOptimizationLevel(
-                OrtSession.SessionOptions.OptLevel.ALL_OPT
+                OrtSession.SessionOptions.OptLevel.ALL
             )
+
             setIntraOpNumThreads(2)
+
             setInterOpNumThreads(1)
         }
 
         session = try {
-            env.createSession(modelBytes, options)
+
+            env.createSession(
+                modelBytes,
+                options
+            )
+
         } finally {
+
             options.close()
         }
 
         inputName = session.inputNames.firstOrNull()
-            ?: throw IllegalStateException("مدل ورودی معتبر ندارد")
+            ?: throw IllegalStateException(
+                "مدل ورودی معتبر ندارد"
+            )
 
         Log.i(TAG, "Model loaded successfully")
         Log.i(TAG, "Input: $inputName")
         Log.i(TAG, "Outputs: ${session.outputNames}")
     }
 
-    fun detect(source: Bitmap): List<Detection> {
+    /**
+     * Detect objects inside a Bitmap.
+     *
+     * Input:
+     * Bitmap from camera.
+     *
+     * Output:
+     * List of detections in original image coordinates.
+     */
+    fun detect(
+        source: Bitmap
+    ): List<Detection> {
 
         if (
             source.isRecycled ||
@@ -79,28 +118,43 @@ class YoloDetector(context: Context) {
         }
 
         var letterboxed: Bitmap? = null
-        var resizeRatio = 1f
-        var padX = 0f
-        var padY = 0f
 
         try {
-            // YOLO-style models are normally trained/inferred with letterboxing.
-            // Preserve the source aspect ratio instead of stretching the frame.
-            resizeRatio = min(
+
+            // -----------------------------------------
+            // Calculate letterbox resize
+            // -----------------------------------------
+
+            val resizeRatio = min(
                 inputSize.toFloat() / source.width,
                 inputSize.toFloat() / source.height
             )
 
-            val resizedWidth = (source.width * resizeRatio)
-                .toInt()
-                .coerceIn(1, inputSize)
+            val resizedWidth = (
+                source.width * resizeRatio
+                ).toInt().coerceIn(
+                1,
+                inputSize
+            )
 
-            val resizedHeight = (source.height * resizeRatio)
-                .toInt()
-                .coerceIn(1, inputSize)
+            val resizedHeight = (
+                source.height * resizeRatio
+                ).toInt().coerceIn(
+                1,
+                inputSize
+            )
 
-            padX = ((inputSize - resizedWidth) / 2).toFloat()
-            padY = ((inputSize - resizedHeight) / 2).toFloat()
+            val padX = (
+                inputSize - resizedWidth
+                ) / 2
+
+            val padY = (
+                inputSize - resizedHeight
+                ) / 2
+
+            // -----------------------------------------
+            // Create letterboxed Bitmap
+            // -----------------------------------------
 
             letterboxed = Bitmap.createBitmap(
                 inputSize,
@@ -109,22 +163,34 @@ class YoloDetector(context: Context) {
             )
 
             val canvas = Canvas(letterboxed)
-            canvas.drawColor(Color.rgb(114, 114, 114))
 
-            val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+            canvas.drawColor(
+                Color.rgb(114, 114, 114)
+            )
+
+            val paint = Paint(
+                Paint.FILTER_BITMAP_FLAG
+            )
+
             canvas.drawBitmap(
                 source,
                 null,
                 Rect(
-                    padX.toInt(),
-                    padY.toInt(),
-                    padX.toInt() + resizedWidth,
-                    padY.toInt() + resizedHeight
+                    padX,
+                    padY,
+                    padX + resizedWidth,
+                    padY + resizedHeight
                 ),
                 paint
             )
 
-            val pixels = IntArray(inputSize * inputSize)
+            // -----------------------------------------
+            // Extract pixels
+            // -----------------------------------------
+
+            val pixels = IntArray(
+                inputSize * inputSize
+            )
 
             letterboxed.getPixels(
                 pixels,
@@ -136,17 +202,35 @@ class YoloDetector(context: Context) {
                 inputSize
             )
 
+            // -----------------------------------------
+            // RGB normalization
+            // -----------------------------------------
+
             val plane = inputSize * inputSize
-            val input = FloatArray(3 * plane)
+
+            val input = FloatArray(
+                3 * plane
+            )
 
             for (i in pixels.indices) {
+
                 val pixel = pixels[i]
-                input[i] = ((pixel shr 16) and 255) / 255f
-                input[plane + i] = ((pixel shr 8) and 255) / 255f
-                input[2 * plane + i] = (pixel and 255) / 255f
+
+                input[i] =
+                    ((pixel shr 16) and 255) / 255f
+
+                input[plane + i] =
+                    ((pixel shr 8) and 255) / 255f
+
+                input[2 * plane + i] =
+                    (pixel and 255) / 255f
             }
 
-            OnnxTensor.createTensor(
+            // -----------------------------------------
+            // Create ONNX input tensor
+            // -----------------------------------------
+
+            val inputTensor = OnnxTensor.createTensor(
                 env,
                 FloatBuffer.wrap(input),
                 longArrayOf(
@@ -155,78 +239,168 @@ class YoloDetector(context: Context) {
                     inputSize.toLong(),
                     inputSize.toLong()
                 )
-            ).use { tensor ->
+            )
+
+            inputTensor.use { tensor ->
+
+                // -------------------------------------
+                // Run inference
+                // -------------------------------------
 
                 session.run(
-                    mapOf(inputName to tensor)
+                    mapOf(
+                        inputName to tensor
+                    )
                 ).use { result ->
 
                     if (result.size() == 0) {
+
+                        Log.w(
+                            TAG,
+                            "Model returned no outputs"
+                        )
+
                         return emptyList()
                     }
 
+                    // ---------------------------------
+                    // Get first model output
+                    // ---------------------------------
+
                     val outputTensor =
                         result[0] as? OnnxTensor
-                            ?: return emptyList()
 
-                    // اصلاح خطای shape
+                    if (outputTensor == null) {
+
+                        Log.w(
+                            TAG,
+                            "Output is not an ONNX tensor"
+                        )
+
+                        return emptyList()
+                    }
+
+                    // ---------------------------------
+                    // Read output shape
+                    // ---------------------------------
+
                     val tensorInfo =
                         outputTensor.info as TensorInfo
 
-                    val shape = tensorInfo.shape
+                    val shape =
+                        tensorInfo.shape
 
                     Log.d(
                         TAG,
                         "Output shape: ${shape.contentToString()}"
                     )
 
+                    // ---------------------------------
+                    // Flatten output tensor
+                    // ---------------------------------
+
                     val output = flatten(
                         outputTensor.value
                     )
 
+                    if (output.isEmpty()) {
+
+                        Log.w(
+                            TAG,
+                            "Output tensor is empty"
+                        )
+
+                        return emptyList()
+                    }
+
+                    // ---------------------------------
+                    // Decode YOLO output
+                    // ---------------------------------
+
                     return decode(
-                        output,
-                        shape,
-                        source.width.toFloat(),
-                        source.height.toFloat(),
-                        resizeRatio,
-                        padX,
-                        padY
+                        data = output,
+                        shape = shape,
+                        srcW = source.width.toFloat(),
+                        srcH = source.height.toFloat(),
+                        resizeRatio = resizeRatio,
+                        padX = padX.toFloat(),
+                        padY = padY.toFloat()
                     )
                 }
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Detection failed", e)
+
+            Log.e(
+                TAG,
+                "Detection failed",
+                e
+            )
+
             return emptyList()
 
         } finally {
-            letterboxed?.let {
-                if (!it.isRecycled) it.recycle()
+
+            letterboxed?.let { bitmap ->
+
+                if (!bitmap.isRecycled) {
+                    bitmap.recycle()
+                }
             }
         }
     }
 
-    private fun flatten(value: Any): FloatArray {
+    /**
+     * Flatten nested ONNX output arrays.
+     *
+     * Supports:
+     * FloatArray
+     * DoubleArray
+     * Number
+     * Nested arrays
+     */
+    private fun flatten(
+        value: Any
+    ): FloatArray {
 
         val output = ArrayList<Float>()
 
         fun walk(v: Any?) {
+
             when (v) {
+
                 is FloatArray -> {
+
                     for (item in v) {
                         output.add(item)
                     }
                 }
 
                 is DoubleArray -> {
+
+                    for (item in v) {
+                        output.add(item.toFloat())
+                    }
+                }
+
+                is IntArray -> {
+
+                    for (item in v) {
+                        output.add(item.toFloat())
+                    }
+                }
+
+                is LongArray -> {
+
                     for (item in v) {
                         output.add(item.toFloat())
                     }
                 }
 
                 is Array<*> -> {
+
                     for (item in v) {
+
                         if (item != null) {
                             walk(item)
                         }
@@ -234,7 +408,10 @@ class YoloDetector(context: Context) {
                 }
 
                 is Number -> {
-                    output.add(v.toFloat())
+
+                    output.add(
+                        v.toFloat()
+                    )
                 }
             }
         }
@@ -244,6 +421,21 @@ class YoloDetector(context: Context) {
         return output.toFloatArray()
     }
 
+    /**
+     * Decode YOLO tensor.
+     *
+     * Supports common layouts:
+     *
+     * YOLOv8:
+     * [1, 4 + classes, candidates]
+     *
+     * [1, candidates, 4 + classes]
+     *
+     * YOLOv5:
+     * [1, 5 + classes, candidates]
+     *
+     * [1, candidates, 5 + classes]
+     */
     private fun decode(
         data: FloatArray,
         shape: LongArray,
@@ -257,24 +449,42 @@ class YoloDetector(context: Context) {
         if (
             data.isEmpty() ||
             srcW <= 0f ||
-            srcH <= 0f
+            srcH <= 0f ||
+            resizeRatio <= 0f
         ) {
             return emptyList()
         }
 
         if (shape.size < 2) {
-            Log.w(TAG, "Unsupported output shape")
+
+            Log.w(
+                TAG,
+                "Unsupported output shape"
+            )
+
             return emptyList()
         }
+
+        // -----------------------------------------
+        // Read tensor dimensions
+        // -----------------------------------------
 
         val dimensions = shape.map {
             it.toInt()
         }
 
-        val dim1 = dimensions[dimensions.size - 2]
-        val dim2 = dimensions[dimensions.size - 1]
+        val dim1 =
+            dimensions[dimensions.size - 2]
 
-        val channelFirst = dim1 <= 100 && dim2 > dim1
+        val dim2 =
+            dimensions[dimensions.size - 1]
+
+        // -----------------------------------------
+        // Determine output layout
+        // -----------------------------------------
+
+        val channelFirst =
+            dim1 <= 100 && dim2 > dim1
 
         val channels = if (channelFirst) {
             dim1
@@ -293,35 +503,62 @@ class YoloDetector(context: Context) {
             candidates <= 0 ||
             data.size < channels * candidates
         ) {
+
             Log.w(
                 TAG,
                 "Unsupported dimensions: ${shape.contentToString()}"
             )
+
             return emptyList()
         }
 
-        // Single-class YOLOv8 exports use 4 box values + class score (5 channels).
-        // Single-class YOLOv5 exports use 4 box values + objectness + class score (6).
-        val hasObjectness = channels == 5 + EXPECTED_CLASSES
+        // -----------------------------------------
+        // Determine model output format
+        // -----------------------------------------
+
+        val hasObjectness =
+            channels == 5 + EXPECTED_CLASSES
 
         val classCount = when {
-            channels == 4 + EXPECTED_CLASSES -> EXPECTED_CLASSES
-            hasObjectness -> EXPECTED_CLASSES
-            channels > 4 -> channels - 4
-            else -> 1
+
+            channels == 4 + EXPECTED_CLASSES ->
+                EXPECTED_CLASSES
+
+            hasObjectness ->
+                EXPECTED_CLASSES
+
+            channels > 4 ->
+                channels - 4
+
+            else ->
+                1
         }
 
-        val out = mutableListOf<Detection>()
+        val output = mutableListOf<Detection>()
+
+        // -----------------------------------------
+        // Decode candidates
+        // -----------------------------------------
 
         for (i in 0 until candidates) {
 
-            fun at(c: Int): Float {
+            fun at(
+                channel: Int
+            ): Float {
+
                 return if (channelFirst) {
-                    data[c * candidates + i]
+
+                    data[channel * candidates + i]
+
                 } else {
-                    data[i * channels + c]
+
+                    data[i * channels + channel]
                 }
             }
+
+            // -------------------------------------
+            // Bounding box
+            // -------------------------------------
 
             val cx = at(0)
             val cy = at(1)
@@ -339,47 +576,63 @@ class YoloDetector(context: Context) {
                 continue
             }
 
-            var confidence = 0f
+            // -------------------------------------
+            // Confidence
+            // -------------------------------------
 
-            if (channels == 5) {
+            val confidence = when {
 
-                confidence = at(4)
+                channels == 5 -> {
 
-            } else if (hasObjectness) {
-
-                val objectness = at(4)
-
-                var bestClass = 0f
-
-                for (c in 0 until classCount) {
-                    val score = at(5 + c)
-
-                    if (
-                        score.isFinite() &&
-                        score > bestClass
-                    ) {
-                        bestClass = score
-                    }
+                    // 4 coordinates + confidence
+                    at(4)
                 }
 
-                confidence = objectness * bestClass
+                hasObjectness -> {
 
-            } else {
+                    // YOLOv5:
+                    // coordinates + objectness + class score
 
-                var bestClass = 0f
+                    val objectness = at(4)
 
-                for (c in 0 until classCount) {
-                    val score = at(4 + c)
+                    var bestClass = 0f
 
-                    if (
-                        score.isFinite() &&
-                        score > bestClass
-                    ) {
-                        bestClass = score
+                    for (c in 0 until classCount) {
+
+                        val score = at(5 + c)
+
+                        if (
+                            score.isFinite() &&
+                            score > bestClass
+                        ) {
+                            bestClass = score
+                        }
                     }
+
+                    objectness * bestClass
                 }
 
-                confidence = bestClass
+                else -> {
+
+                    // YOLOv8:
+                    // coordinates + class scores
+
+                    var bestClass = 0f
+
+                    for (c in 0 until classCount) {
+
+                        val score = at(4 + c)
+
+                        if (
+                            score.isFinite() &&
+                            score > bestClass
+                        ) {
+                            bestClass = score
+                        }
+                    }
+
+                    bestClass
+                }
             }
 
             if (
@@ -390,17 +643,46 @@ class YoloDetector(context: Context) {
                 continue
             }
 
-            // Remove letterbox padding, then map model-space pixels back
-            // into the original frame coordinates.
-            val sourceCx = (cx - padX) / resizeRatio
-            val sourceCy = (cy - padY) / resizeRatio
-            val sourceW = w / resizeRatio
-            val sourceH = h / resizeRatio
+            // -------------------------------------
+            // Convert model coordinates
+            // to original image coordinates
+            // -------------------------------------
 
-            val left = max(0f, sourceCx - sourceW / 2f)
-            val top = max(0f, sourceCy - sourceH / 2f)
-            val right = min(srcW, sourceCx + sourceW / 2f)
-            val bottom = min(srcH, sourceCy + sourceH / 2f)
+            val sourceCx =
+                (cx - padX) / resizeRatio
+
+            val sourceCy =
+                (cy - padY) / resizeRatio
+
+            val sourceW =
+                w / resizeRatio
+
+            val sourceH =
+                h / resizeRatio
+
+            val left =
+                max(
+                    0f,
+                    sourceCx - sourceW / 2f
+                )
+
+            val top =
+                max(
+                    0f,
+                    sourceCy - sourceH / 2f
+                )
+
+            val right =
+                min(
+                    srcW,
+                    sourceCx + sourceW / 2f
+                )
+
+            val bottom =
+                min(
+                    srcH,
+                    sourceCy + sourceH / 2f
+                )
 
             if (
                 right <= left ||
@@ -409,7 +691,11 @@ class YoloDetector(context: Context) {
                 continue
             }
 
-            out.add(
+            // -------------------------------------
+            // Add detection
+            // -------------------------------------
+
+            output.add(
                 Detection(
                     left = left,
                     top = top,
@@ -420,12 +706,23 @@ class YoloDetector(context: Context) {
             )
         }
 
+        // -----------------------------------------
+        // Non-Maximum Suppression
+        // -----------------------------------------
+
         return nms(
-            out,
+            output,
             NMS_THRESHOLD
-        ).take(MAX_DETECTIONS)
+        ).take(
+            MAX_DETECTIONS
+        )
     }
 
+    /**
+     * Non-Maximum Suppression.
+     *
+     * Removes overlapping detections.
+     */
     private fun nms(
         items: List<Detection>,
         threshold: Float
@@ -447,16 +744,23 @@ class YoloDetector(context: Context) {
             sorted.isNotEmpty() &&
             kept.size < MAX_DETECTIONS
         ) {
-            val best = sorted.removeAt(0)
+
+            val best =
+                sorted.removeAt(0)
 
             kept.add(best)
 
-            val iterator = sorted.iterator()
+            val iterator =
+                sorted.iterator()
 
             while (iterator.hasNext()) {
-                val candidate = iterator.next()
 
-                if (iou(best, candidate) > threshold) {
+                val candidate =
+                    iterator.next()
+
+                if (
+                    iou(best, candidate) > threshold
+                ) {
                     iterator.remove()
                 }
             }
@@ -465,52 +769,86 @@ class YoloDetector(context: Context) {
         return kept
     }
 
+    /**
+     * Intersection over Union.
+     */
     private fun iou(
         a: Detection,
         b: Detection
     ): Float {
 
-        val x1 = max(a.left, b.left)
-        val y1 = max(a.top, b.top)
+        val x1 =
+            max(a.left, b.left)
 
-        val x2 = min(a.right, b.right)
-        val y2 = min(a.bottom, b.bottom)
+        val y1 =
+            max(a.top, b.top)
 
-        val interWidth = max(
-            0f,
-            x2 - x1
-        )
+        val x2 =
+            min(a.right, b.right)
 
-        val interHeight = max(
-            0f,
-            y2 - y1
-        )
+        val y2 =
+            min(a.bottom, b.bottom)
 
-        val inter = interWidth * interHeight
+        val interWidth =
+            max(0f, x2 - x1)
+
+        val interHeight =
+            max(0f, y2 - y1)
+
+        val intersection =
+            interWidth * interHeight
 
         val areaA =
-            max(0f, a.right - a.left) *
-            max(0f, a.bottom - a.top)
+            max(
+                0f,
+                a.right - a.left
+            ) *
+                max(
+                    0f,
+                    a.bottom - a.top
+                )
 
         val areaB =
-            max(0f, b.right - b.left) *
-            max(0f, b.bottom - b.top)
+            max(
+                0f,
+                b.right - b.left
+            ) *
+                max(
+                    0f,
+                    b.bottom - b.top
+                )
 
-        val union = areaA + areaB - inter
+        val union =
+            areaA + areaB - intersection
 
         return if (union <= 0f) {
             0f
         } else {
-            inter / union
+            intersection / union
         }
     }
 
+    /**
+     * Release ONNX session resources.
+     */
     fun close() {
+
         try {
+
             session.close()
-            Log.i(TAG, "Session closed")
+
+            Log.i(
+                TAG,
+                "Session closed"
+            )
+
         } catch (e: Exception) {
-            Log.e(TAG, "Error closing session", e)
+
+            Log.e(
+                TAG,
+                "Error closing session",
+                e
+            )
         }
     }
 }
