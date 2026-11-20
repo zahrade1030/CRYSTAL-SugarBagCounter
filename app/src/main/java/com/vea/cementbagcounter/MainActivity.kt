@@ -210,8 +210,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             elevation = dp(2).toFloat()
-            minHeight = dp(48)
-            minimumHeight = dp(48)
+            minHeight = dp(44)
+            minimumHeight = dp(44)
         }
     }
 
@@ -267,10 +267,10 @@ class MainActivity : AppCompatActivity() {
             button,
             LinearLayout.LayoutParams(
                 0,
-                dp(48),
+                dp(44),
                 1f
             ).apply {
-                setMargins(dp(3), dp(3), dp(3), dp(3))
+                setMargins(dp(2), dp(2), dp(2), dp(2))
             }
         )
     }
@@ -299,10 +299,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Compact header to give more room to the camera
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(10), dp(12), dp(8))
+            setPadding(dp(8), dp(4), dp(8), dp(2))
         }
 
         val appTitle = TextView(this).apply {
@@ -310,7 +311,7 @@ class MainActivity : AppCompatActivity() {
                 "CRYSTAL.BIN",
                 "CRYSTAL.BIN"
             )
-            textSize = 19f
+            textSize = 17f
             setTextColor(industrialGold)
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
@@ -322,10 +323,10 @@ class MainActivity : AppCompatActivity() {
                 "شمارش هوشمند کیسه‌های قند",
                 "Smart Sugar Bag Counter"
             )
-            textSize = 13f
+            textSize = 11f
             setTextColor(industrialLightGold)
             gravity = Gravity.CENTER
-            setPadding(0, dp(3), 0, 0)
+            setPadding(0, dp(1), 0, 0)
         }
 
         header.addView(appTitle)
@@ -404,13 +405,13 @@ class MainActivity : AppCompatActivity() {
         val countCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setPadding(dp(3), dp(3), dp(3), dp(3))
             background = createCardBackground()
         }
 
         countText = TextView(this).apply {
             text = tr("0", "0")
-            textSize = 38f
+            textSize = 32f
             setTextColor(industrialLightGold)
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
@@ -418,10 +419,10 @@ class MainActivity : AppCompatActivity() {
 
         val countCaption = TextView(this).apply {
             text = tr("تعداد کیسه شمارش‌شده", "BAGS COUNTED")
-            textSize = 12f
+            textSize = 10f
             setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
-            setPadding(0, dp(2), 0, dp(3))
+            setPadding(0, dp(1), 0, dp(1))
         }
 
         statusText = TextView(this).apply {
@@ -429,10 +430,10 @@ class MainActivity : AppCompatActivity() {
                 "خطوط شمارش را تنظیم کنید",
                 "Configure counting lines"
             )
-            textSize = 12f
+            textSize = 10f
             setTextColor(industrialLightGold)
             gravity = Gravity.CENTER
-            setPadding(dp(5), dp(5), dp(5), dp(5))
+            setPadding(dp(2), dp(2), dp(2), dp(2))
         }
 
         countCard.addView(countCaption)
@@ -443,7 +444,7 @@ class MainActivity : AppCompatActivity() {
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(5), dp(2), dp(5), dp(2))
+            setPadding(dp(2), 0, dp(2), 0)
         }
 
         val primaryRow = createButtonRow()
@@ -506,6 +507,7 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
+        // Camera gets the remaining screen space
         base.addView(
             cameraFrame,
             LinearLayout.LayoutParams(
@@ -513,7 +515,7 @@ class MainActivity : AppCompatActivity() {
                 0,
                 1f
             ).apply {
-                setMargins(dp(8), dp(2), dp(8), dp(5))
+                setMargins(dp(4), 0, dp(4), dp(2))
             }
         )
 
@@ -523,7 +525,7 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(dp(8), dp(2), dp(8), dp(3))
+                setMargins(dp(4), 0, dp(4), dp(2))
             }
         )
 
@@ -1682,7 +1684,7 @@ class MainActivity : AppCompatActivity() {
 
             addEntry(
                 "xl/styles.xml",
-                """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="16"/><color rgb="FF17191C"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FFE5BD69"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FF17191C"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD4AF37"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF252525"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFB5B5B5"/></left><right style="thin"><color rgb="FFB5B5B5"/></right><top style="thin"><color rgb="FFB5B5B5"/></top><bottom style="thin"><color rgb="FFB5B5B5"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>"""
+                """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="16"/><color rgb="FF17191C"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FFE5BD69"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FF17191C"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD4AF37"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF252525"/><bgColor indexed="64"/></pattern></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFB5B5B5"/></left><right style="thin"><color rgb="FFB5B5B5"/></right><top style="thin"><color rgb="FFB5B5B5"/></top><bottom style="thin"><color rgb="FFB5B5B5"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>"""
             )
 
             addEntry(
