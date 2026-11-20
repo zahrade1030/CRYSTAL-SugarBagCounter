@@ -24,10 +24,12 @@ import android.widget.Toast
 class LicenseActivity : Activity() {
 
     private val gold = Color.rgb(212, 175, 55)
+    private val lightGold = Color.rgb(235, 205, 120)
     private val backgroundColor = Color.rgb(12, 12, 12)
-    private val cardColor = Color.rgb(27, 27, 27)
+    private val cardColor = Color.rgb(24, 25, 27)
+    private val inputColor = Color.rgb(36, 37, 40)
     private val white = Color.WHITE
-    private val gray = Color.rgb(160, 160, 160)
+    private val gray = Color.rgb(155, 158, 162)
     private val red = Color.rgb(235, 75, 75)
     private val green = Color.rgb(75, 210, 120)
 
@@ -68,8 +70,7 @@ class LicenseActivity : Activity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            setPadding(dp(20), dp(16), dp(20), dp(20))
             setBackgroundColor(backgroundColor)
             layoutDirection = if (isEnglish) {
                 View.LAYOUT_DIRECTION_LTR
@@ -80,25 +81,52 @@ class LicenseActivity : Activity() {
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            addView(root)
+            clipToPadding = false
+            addView(
+                root,
+                ScrollView.LayoutParams(
+                    ScrollView.LayoutParams.MATCH_PARENT,
+                    ScrollView.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
 
-        val languageButton = Button(this).apply {
-            text = if (isEnglish) "فارسی" else "English"
-            textSize = 13f
+        val topBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val brand = TextView(this).apply {
+            text = "CRYSTAL.BIN"
+            textSize = 17f
+            typeface = Typeface.DEFAULT_BOLD
             setTextColor(gold)
-            isAllCaps = false
-            background = roundedBackground(Color.rgb(35, 35, 35), 12)
+            gravity = Gravity.CENTER_VERTICAL
         }
 
-        root.addView(
+        topBar.addView(
+            brand,
+            LinearLayout.LayoutParams(0, dp(45), 1f)
+        )
+
+        val languageButton = createSmallButton(
+            if (isEnglish) "فارسی" else "English"
+        )
+
+        topBar.addView(
             languageButton,
             LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(44)
-            ).apply {
-                gravity = Gravity.END
-            }
+                dp(90),
+                dp(42)
+            )
+        )
+
+        root.addView(
+            topBar,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(45)
+            )
         )
 
         languageButton.setOnClickListener {
@@ -106,49 +134,89 @@ class LicenseActivity : Activity() {
                 .edit()
                 .putString("language", if (isEnglish) "fa" else "en")
                 .apply()
+
             recreate()
         }
 
-        addSpace(root, 15)
+        addSpace(root, 18)
+
+        val headerContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+        }
+
+        val logo = TextView(this).apply {
+            text = "C"
+            textSize = 38f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(gold)
+            gravity = Gravity.CENTER
+            background = createCircleBackground(Color.rgb(28, 28, 28), gold)
+        }
+
+        headerContainer.addView(
+            logo,
+            LinearLayout.LayoutParams(dp(72), dp(72)).apply {
+                gravity = Gravity.CENTER
+            }
+        )
+
+        addSpace(headerContainer, 14)
 
         val title = TextView(this).apply {
             text = "CRYSTAL.BIN"
-            textSize = 30f
+            textSize = 28f
             setTextColor(gold)
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
         }
-        root.addView(title)
 
-        addSpace(root, 8)
+        headerContainer.addView(title)
+
+        addSpace(headerContainer, 8)
 
         val subtitle = TextView(this).apply {
-            text = tr("شمارشگر صنعتی کیسه قند", "Industrial Sugar Bag Counter")
-            textSize = 17f
+            text = tr(
+                "شمارشگر هوشمند صنعتی کیسه قند",
+                "Industrial Smart Sugar Bag Counter"
+            )
+            textSize = 15f
             setTextColor(white)
             gravity = Gravity.CENTER
         }
-        root.addView(subtitle)
 
-        addSpace(root, 10)
+        headerContainer.addView(subtitle)
+
+        addSpace(headerContainer, 6)
 
         val description = TextView(this).apply {
             text = tr(
                 "سیستم هوشمند شمارش و مدیریت تولید",
                 "Intelligent Production Counting System"
             )
-            textSize = 13f
+            textSize = 12f
             setTextColor(gray)
             gravity = Gravity.CENTER
         }
-        root.addView(description)
 
-        addSpace(root, 24)
+        headerContainer.addView(description)
+
+        root.addView(
+            headerContainer,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        addSpace(root, 22)
 
         val cardView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(22), dp(20), dp(22))
-            background = roundedBackground(cardColor, 22)
+            background = roundedBackground(cardColor, 22, Color.rgb(65, 65, 65))
             layoutDirection = if (isEnglish) {
                 View.LAYOUT_DIRECTION_LTR
             } else {
@@ -167,13 +235,14 @@ class LicenseActivity : Activity() {
         val heading = TextView(this).apply {
             text = tr("فعال‌سازی نرم‌افزار", "Software Activation")
             textSize = 21f
-            setTextColor(gold)
+            setTextColor(lightGold)
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
         }
+
         cardView.addView(heading)
 
-        addSpace(cardView, 10)
+        addSpace(cardView, 12)
 
         val activationDescription = TextView(this).apply {
             text = tr(
@@ -183,48 +252,68 @@ class LicenseActivity : Activity() {
             textSize = 13f
             setTextColor(gray)
             gravity = Gravity.CENTER
+            setPadding(dp(4), 0, dp(4), 0)
         }
+
         cardView.addView(activationDescription)
 
-        addSpace(cardView, 22)
+        addSpace(cardView, 24)
 
         val deviceLabel = TextView(this).apply {
-            text = tr("شناسه اختصاصی دستگاه", "Device ID")
+            text = tr("شناسه اختصاصی دستگاه", "DEVICE ID")
             setTextColor(gold)
-            textSize = 14f
+            textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
         }
+
         cardView.addView(deviceLabel)
 
-        addSpace(cardView, 8)
+        addSpace(cardView, 10)
 
         deviceIdText = TextView(this).apply {
             text = LicenseManager.getDeviceId(this@LicenseActivity)
             textSize = 13f
             setTextColor(white)
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(14), dp(12), dp(14))
+            setPadding(dp(12), dp(16), dp(12), dp(16))
             typeface = Typeface.MONOSPACE
-            background = roundedBackground(Color.rgb(40, 40, 40), 12)
+            background = roundedBackground(inputColor, 12, Color.rgb(65, 65, 65))
         }
-        cardView.addView(deviceIdText)
 
-        addSpace(cardView, 10)
+        cardView.addView(
+            deviceIdText,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
-        val copyButton = createButton(tr("کپی شناسه دستگاه", "Copy Device ID"), false)
+        addSpace(cardView, 12)
+
+        val copyButton = createButton(
+            tr("کپی شناسه دستگاه", "Copy Device ID"),
+            false
+        )
+
         cardView.addView(
             copyButton,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(50)
+                dp(48)
             )
         )
 
         copyButton.setOnClickListener {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clipboard =
+                getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
             clipboard.setPrimaryClip(
-                ClipData.newPlainText("Device ID", deviceIdText.text.toString())
+                ClipData.newPlainText(
+                    "Device ID",
+                    deviceIdText.text.toString()
+                )
             )
+
             Toast.makeText(
                 this,
                 tr("شناسه دستگاه کپی شد", "Device ID copied"),
@@ -235,22 +324,26 @@ class LicenseActivity : Activity() {
         addSpace(cardView, 24)
 
         val licenseLabel = TextView(this).apply {
-            text = tr("کد لایسنس", "License Key")
+            text = tr("کد لایسنس", "LICENSE KEY")
             setTextColor(gold)
-            textSize = 14f
+            textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
         }
+
         cardView.addView(licenseLabel)
 
-        addSpace(cardView, 8)
+        addSpace(cardView, 10)
 
         licenseInput = EditText(this).apply {
-            hint = tr("کد فعال‌سازی را وارد کنید", "Enter your activation code")
+            hint = tr(
+                "کد فعال‌سازی را وارد کنید",
+                "Enter your activation code"
+            )
             setTextColor(white)
             setHintTextColor(gray)
-            textSize = 12f
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            background = roundedBackground(Color.rgb(40, 40, 40), 12)
+            textSize = 13f
+            setPadding(dp(15), dp(15), dp(15), dp(15))
+            background = roundedBackground(inputColor, 12, Color.rgb(65, 65, 65))
             isSingleLine = false
             minLines = 3
             maxLines = 6
@@ -268,10 +361,10 @@ class LicenseActivity : Activity() {
             )
         )
 
-        addSpace(cardView, 20)
+        addSpace(cardView, 22)
 
         activateButton = createButton(
-            tr("فعال‌سازی و ورود به برنامه", "Activate & Enter App"),
+            tr("فعال‌سازی و ورود به برنامه", "ACTIVATE & ENTER"),
             true
         )
 
@@ -287,36 +380,58 @@ class LicenseActivity : Activity() {
             activateLicense()
         }
 
-        addSpace(cardView, 14)
+        addSpace(cardView, 12)
 
         statusText = TextView(this).apply {
             text = ""
-            textSize = 14f
+            textSize = 13f
             gravity = Gravity.CENTER
             setTextColor(red)
             setPadding(dp(8), dp(10), dp(8), dp(10))
         }
+
         cardView.addView(statusText)
 
-        addSpace(root, 22)
+        addSpace(root, 24)
+
+        val footerDivider = View(this).apply {
+            setBackgroundColor(Color.rgb(45, 45, 45))
+        }
+
+        root.addView(
+            footerDivider,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(1)
+            )
+        )
+
+        addSpace(root, 16)
 
         val footer = TextView(this).apply {
             text = "CRYSTAL.BIN"
-            textSize = 14f
+            textSize = 13f
             setTextColor(gold)
             gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
         }
+
         root.addView(footer)
 
         addSpace(root, 5)
 
         val footerDescription = TextView(this).apply {
-            text = tr("سیستم هوشمند صنعتی", "Industrial Vision System")
-            textSize = 11f
+            text = tr(
+                "سیستم هوشمند صنعتی",
+                "INDUSTRIAL VISION SYSTEM"
+            )
+            textSize = 10f
             setTextColor(gray)
             gravity = Gravity.CENTER
+            letterSpacing = 0.05f
         }
+
         root.addView(footerDescription)
 
         setContentView(scroll)
@@ -327,6 +442,7 @@ class LicenseActivity : Activity() {
         if (activationInProgress) return
 
         val code = licenseInput.text.toString().trim()
+
         statusText.text = ""
         statusText.setTextColor(red)
 
@@ -340,7 +456,11 @@ class LicenseActivity : Activity() {
 
         activationInProgress = true
         setLoading(true)
-        statusText.text = tr("در حال بررسی کد...", "Verifying activation code...")
+
+        statusText.text = tr(
+            "در حال بررسی کد...",
+            "Verifying activation code..."
+        )
 
         Thread({
             val success = try {
@@ -357,15 +477,24 @@ class LicenseActivity : Activity() {
 
                 if (success) {
                     statusText.setTextColor(green)
-                    statusText.text = tr("فعال‌سازی موفق بود", "Activation successful")
+                    statusText.text = tr(
+                        "فعال‌سازی موفق بود",
+                        "Activation successful"
+                    )
+
                     Toast.makeText(
                         this,
-                        tr("فعال‌سازی موفق بود", "Activation successful"),
+                        tr(
+                            "فعال‌سازی موفق بود",
+                            "Activation successful"
+                        ),
                         Toast.LENGTH_LONG
                     ).show()
+
                     openMainActivity()
                 } else {
                     statusText.setTextColor(red)
+
                     statusText.text = if (
                         LicenseManager.getStatus(this@LicenseActivity) ==
                             LicenseManager.LicenseStatus.CLOCK_TAMPERED
@@ -386,52 +515,121 @@ class LicenseActivity : Activity() {
     }
 
     private fun setLoading(loading: Boolean) {
+
         activateButton.isEnabled = !loading
+
         activateButton.text = if (loading) {
-            tr("در حال بررسی لایسنس...", "Verifying license...")
+            tr(
+                "در حال بررسی لایسنس...",
+                "VERIFYING LICENSE..."
+            )
         } else {
-            tr("فعال‌سازی و ورود به برنامه", "Activate & Enter App")
+            tr(
+                "فعال‌سازی و ورود به برنامه",
+                "ACTIVATE & ENTER"
+            )
         }
+
         activateButton.alpha = if (loading) 0.6f else 1f
     }
 
     private fun createButton(text: String, primary: Boolean): Button {
+
         return Button(this).apply {
             this.text = text
-            textSize = 14f
+            textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (primary) Color.rgb(12, 12, 12) else gold)
-            background = roundedBackground(
-                if (primary) gold else Color.rgb(40, 40, 40),
-                14
+
+            setTextColor(
+                if (primary) Color.rgb(15, 15, 15)
+                else lightGold
             )
+
+            background = roundedBackground(
+                if (primary) gold else Color.rgb(38, 39, 42),
+                14,
+                if (primary) gold else Color.rgb(75, 75, 75)
+            )
+
             isAllCaps = false
             minHeight = dp(48)
             minimumHeight = dp(48)
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+        }
+    }
+
+    private fun createSmallButton(text: String): Button {
+
+        return Button(this).apply {
+            this.text = text
+            textSize = 12f
+            setTextColor(gold)
+            typeface = Typeface.DEFAULT_BOLD
+            background = roundedBackground(
+                Color.rgb(35, 35, 35),
+                12,
+                Color.rgb(75, 75, 75)
+            )
+            isAllCaps = false
+            minHeight = dp(40)
+            minimumHeight = dp(40)
+            setPadding(dp(8), dp(4), dp(8), dp(4))
         }
     }
 
     private fun openMainActivity() {
+
         val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
+
         startActivity(intent)
         finish()
     }
 
     private fun addSpace(parent: LinearLayout, height: Int) {
+
         parent.addView(
             View(this),
             LinearLayout.LayoutParams(dp(1), dp(height))
         )
     }
 
-    private fun roundedBackground(color: Int, radius: Int): GradientDrawable {
+    private fun createCircleBackground(
+        color: Int,
+        strokeColor: Int
+    ): GradientDrawable {
+
+        return GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(color)
+            setStroke(dp(2), strokeColor)
+        }
+    }
+
+    private fun roundedBackground(
+        color: Int,
+        radius: Int,
+        strokeColor: Int
+    ): GradientDrawable {
+
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
-            setStroke(dp(1), gold)
+            setStroke(dp(1), strokeColor)
         }
+    }
+
+    private fun roundedBackground(
+        color: Int,
+        radius: Int
+    ): GradientDrawable {
+
+        return roundedBackground(
+            color,
+            radius,
+            gold
+        )
     }
 }
