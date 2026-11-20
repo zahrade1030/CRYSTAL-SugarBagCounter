@@ -1,3 +1,4 @@
+
 name: Build CRYSTAL.BIN APKs
 
 on:
@@ -11,6 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     env:
       CRYSTAL_KEYSTORE_BASE64: ${{ secrets.CRYSTAL_KEYSTORE_BASE64 }}
       CRYSTAL_KEYSTORE_PASSWORD: ${{ secrets.CRYSTAL_KEYSTORE_PASSWORD }}
@@ -33,19 +35,38 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Prepare optional release signing key
-        if: ${{ env.CRYSTAL_KEYSTORE_BASE64 != '' }}
+      - name: Check release signing
+        id: signing
+        shell: bash
         run: |
-          echo "$CRYSTAL_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/crystal-release.jks"
-          echo "CRYSTAL_KEYSTORE_PATH=$RUNNER_TEMP/crystal-release.jks" >> "$GITHUB_ENV"
+          if [[ -n "$CRYSTAL_KEYSTORE_BASE64" &&
+                -n "$CRYSTAL_KEYSTORE_PASSWORD" &&
+                -n "$CRYSTAL_KEY_ALIAS" &&
+                -n "$CRYSTAL_KEY_PASSWORD" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
 
-      - name: Build debug and release APKs
-        run: gradle clean assembleDebug assembleRelease --no-build-cache --rerun-tasks
+            echo "$CRYSTAL_KEYSTORE_BASE64" | base64 --decode \
+              > "$RUNNER_TEMP/crystal-release.jks"
+
+            echo "CRYSTAL_KEYSTORE_PATH=$RUNNER_TEMP/crystal-release.jks" \
+              >> "$GITHUB_ENV"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Release signing secrets are incomplete."
+            echo "Debug APK will still be built."
+          fi
+
+      - name: Build Debug APK
+        run: gradle clean assembleDebug --no-build-cache --rerun-tasks
+
+      - name: Build signed Release APK
+        if: steps.signing.outputs.enabled == 'true'
+        run: gradle assembleRelease --no-build-cache --rerun-tasks
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CRYSTAL-BIN-APKs-v1.1.0
+          name: CRYSTAL-BIN-APKs-v1.2.0
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/*.apk
