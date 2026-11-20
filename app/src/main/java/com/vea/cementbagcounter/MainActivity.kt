@@ -156,7 +156,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Migrate the older language preference into the shared settings file.
         if (!settingsPrefs.contains("language") && prefs.contains("language")) {
             settingsPrefs.edit()
                 .putString("language", prefs.getString("language", "fa"))
@@ -183,7 +182,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // دکمه‌ها
+    // UI HELPERS
     // --------------------------------------------------
 
     private fun createIndustrialButton(
@@ -192,9 +191,8 @@ class MainActivity : AppCompatActivity() {
     ): Button {
 
         return Button(this).apply {
-
             text = title
-            textSize = 15f
+            textSize = 14f
             isAllCaps = false
             typeface = Typeface.DEFAULT_BOLD
 
@@ -211,14 +209,82 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-            elevation = dp(3).toFloat()
-            minHeight = dp(52)
-            minimumHeight = dp(52)
+            elevation = dp(2).toFloat()
+            minHeight = dp(48)
+            minimumHeight = dp(48)
+        }
+    }
+
+    private fun createLabel(
+        text: String,
+        size: Float = 14f,
+        color: Int = Color.WHITE,
+        bold: Boolean = false
+    ): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = size
+            setTextColor(color)
+            gravity = Gravity.CENTER
+            typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
+    }
+
+    private fun createSectionTitle(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 15f
+            setTextColor(industrialLightGold)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = if (isEnglish) Gravity.START else Gravity.END
+            setPadding(dp(8), dp(10), dp(8), dp(5))
+        }
+    }
+
+    private fun createButtonRow(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = if (isEnglish) {
+                View.LAYOUT_DIRECTION_LTR
+            } else {
+                View.LAYOUT_DIRECTION_RTL
+            }
+        }
+    }
+
+    private fun addRowButton(
+        parent: LinearLayout,
+        label: String,
+        primary: Boolean = false,
+        action: () -> Unit
+    ) {
+        val button = createIndustrialButton(label, primary).apply {
+            setOnClickListener { action() }
+        }
+
+        parent.addView(
+            button,
+            LinearLayout.LayoutParams(
+                0,
+                dp(48),
+                1f
+            ).apply {
+                setMargins(dp(3), dp(3), dp(3), dp(3))
+            }
+        )
+    }
+
+    private fun createCardBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(industrialButton)
+            cornerRadius = dp(16).toFloat()
+            setStroke(dp(1), industrialBorder)
         }
     }
 
     // --------------------------------------------------
-    // رابط کاربری
+    // MAIN UI
     // --------------------------------------------------
 
     private fun buildUi() {
@@ -233,17 +299,39 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val header = TextView(this).apply {
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(10), dp(12), dp(8))
+        }
+
+        val appTitle = TextView(this).apply {
             text = tr(
-                "شمارشگر هوشمند کیسه‌های قند",
+                "CRYSTAL.BIN",
+                "CRYSTAL.BIN"
+            )
+            textSize = 19f
+            setTextColor(industrialGold)
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 1.2f
+        }
+
+        val subtitle = TextView(this).apply {
+            text = tr(
+                "شمارش هوشمند کیسه‌های قند",
                 "Smart Sugar Bag Counter"
             )
-            textSize = 21f
+            textSize = 13f
             setTextColor(industrialLightGold)
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(16), dp(8), dp(16))
-            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, dp(3), 0, 0)
         }
+
+        header.addView(appTitle)
+        header.addView(subtitle)
+
+        // CAMERA
 
         preview = PreviewView(this).apply {
             scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -271,7 +359,9 @@ class MainActivity : AppCompatActivity() {
             isSetup = true
         }
 
-        val cameraFrame = FrameLayout(this)
+        val cameraFrame = FrameLayout(this).apply {
+            background = createCardBackground()
+        }
 
         cameraFrame.addView(
             preview,
@@ -305,30 +395,33 @@ class MainActivity : AppCompatActivity() {
             val height = bottom - top
 
             if (width > 0 && height > 0) {
-
-                val guideWidth =
-                    (width * 0.88f * guideZoom / 100f).toInt()
-
-                val guideHeight =
-                    (height * 0.82f * guideZoom / 100f).toInt()
-
-                guideImage.layoutParams = FrameLayout.LayoutParams(
-                    guideWidth,
-                    guideHeight,
-                    Gravity.CENTER
-                )
-
-                guideImage.requestLayout()
+                updateGuideSize()
             }
         }
 
+        // COUNT CARD
+
+        val countCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = createCardBackground()
+        }
+
         countText = TextView(this).apply {
-            text = tr("تعداد: 0", "Count: 0")
-            textSize = 30f
+            text = tr("0", "0")
+            textSize = 38f
             setTextColor(industrialLightGold)
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(14), dp(8), dp(4))
             typeface = Typeface.DEFAULT_BOLD
+        }
+
+        val countCaption = TextView(this).apply {
+            text = tr("تعداد کیسه شمارش‌شده", "BAGS COUNTED")
+            textSize = 12f
+            setTextColor(Color.LTGRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(2), 0, dp(3))
         }
 
         statusText = TextView(this).apply {
@@ -336,156 +429,82 @@ class MainActivity : AppCompatActivity() {
                 "خطوط شمارش را تنظیم کنید",
                 "Configure counting lines"
             )
-            textSize = 14f
-            setTextColor(Color.LTGRAY)
+            textSize = 12f
+            setTextColor(industrialLightGold)
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(5), dp(8), dp(12))
+            setPadding(dp(5), dp(5), dp(5), dp(5))
         }
+
+        countCard.addView(countCaption)
+        countCard.addView(countText)
+        countCard.addView(statusText)
+
+        // MAIN CONTROLS
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            layoutDirection = if (isEnglish) {
-                View.LAYOUT_DIRECTION_LTR
-            } else {
-                View.LAYOUT_DIRECTION_RTL
-            }
+            setPadding(dp(5), dp(2), dp(5), dp(2))
         }
 
-        val firstRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = if (isEnglish) {
-                View.LAYOUT_DIRECTION_LTR
-            } else {
-                View.LAYOUT_DIRECTION_RTL
-            }
-        }
+        val primaryRow = createButtonRow()
 
-        val secondRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutDirection = if (isEnglish) {
-                View.LAYOUT_DIRECTION_LTR
-            } else {
-                View.LAYOUT_DIRECTION_RTL
-            }
-        }
-
-        fun addActionButton(
-            parent: LinearLayout,
-            label: String,
-            action: () -> Unit
+        addRowButton(
+            primaryRow,
+            tr("تنظیم خطوط", "Setup Lines")
         ) {
-
-            val button = createIndustrialButton(
-                title = label,
-                primary = label == tr("شروع شمارش", "Start Counting")
-            ).apply {
-                setOnClickListener { action() }
-            }
-
-            parent.addView(
-                button,
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(52),
-                    1f
-                ).apply {
-                    setMargins(dp(3), dp(3), dp(3), dp(3))
-                }
-            )
-        }
-
-        addActionButton(firstRow, tr("تنظیم خطوط", "Setup Lines")) {
             enterSetupMode()
         }
 
-        addActionButton(firstRow, tr("شروع شمارش", "Start Counting")) {
+        addRowButton(
+            primaryRow,
+            tr("شروع شمارش", "Start"),
+            primary = true
+        ) {
             startCounting()
         }
 
-        addActionButton(firstRow, tr("توقف", "Stop")) {
+        addRowButton(
+            primaryRow,
+            tr("توقف", "Stop")
+        ) {
             stopCounting()
         }
 
-        addActionButton(secondRow, tr("ریست", "Reset")) {
+        val secondaryRow = createButtonRow()
+
+        addRowButton(
+            secondaryRow,
+            tr("ریست", "Reset")
+        ) {
             resetCounting()
         }
 
-        addActionButton(secondRow, tr("تاریخچه", "History")) {
-            showHistory()
+        addRowButton(
+            secondaryRow,
+            tr("گزارش‌ها", "Reports")
+        ) {
+            showReportsMenu()
         }
 
-        addActionButton(secondRow, tr("آمار", "Statistics")) {
-            showStatistics()
+        addRowButton(
+            secondaryRow,
+            tr("تنظیمات", "Settings")
+        ) {
+            showSettingsMenu()
         }
 
-        addActionButton(secondRow, "Excel") {
-            exportExcel()
-        }
+        controls.addView(primaryRow)
+        controls.addView(secondaryRow)
 
-        val guideSettingsButton =
-            createIndustrialButton(
-                tr("تنظیم تصویر راهنما", "Guide Image Settings")
-            ).apply {
-                setOnClickListener {
-                    showGuideSettings()
-                }
-            }
+        // LAYOUT
 
-        val languageButton =
-            createIndustrialButton(
-                tr("زبان / Language", "Language / زبان")
-            ).apply {
-                setOnClickListener {
-                    showLanguageSettings()
-                }
-            }
-
-        val aboutButton =
-            createIndustrialButton(
-                tr("درباره برنامه", "About")
-            ).apply {
-                setOnClickListener {
-                    showAbout()
-                }
-            }
-
-        controls.addView(firstRow)
-        controls.addView(secondRow)
-
-        controls.addView(
-            guideSettingsButton,
+        base.addView(
+            header,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                setMargins(dp(3), dp(3), dp(3), dp(3))
-            }
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         )
-
-        controls.addView(
-            languageButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                setMargins(dp(3), dp(3), dp(3), dp(3))
-            }
-        )
-
-        controls.addView(
-            aboutButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                setMargins(dp(3), dp(3), dp(3), dp(3))
-            }
-        )
-
-        base.addView(header)
 
         base.addView(
             cameraFrame,
@@ -493,18 +512,90 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 0,
                 1f
-            )
+            ).apply {
+                setMargins(dp(8), dp(2), dp(8), dp(5))
+            }
         )
 
-        base.addView(countText)
-        base.addView(statusText)
-        base.addView(controls)
+        base.addView(
+            countCard,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(dp(8), dp(2), dp(8), dp(3))
+            }
+        )
+
+        base.addView(
+            controls,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         setContentView(base)
     }
 
     // --------------------------------------------------
-    // زبان
+    // REPORTS MENU
+    // --------------------------------------------------
+
+    private fun showReportsMenu() {
+
+        val options = arrayOf(
+            tr("تاریخچه شمارش", "Counting History"),
+            tr("آمار عملکرد", "Statistics"),
+            tr("خروجی Excel", "Export Excel")
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(tr("گزارش‌ها", "Reports"))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showHistory()
+                    1 -> showStatistics()
+                    2 -> exportExcel()
+                }
+            }
+            .setNegativeButton(
+                tr("بستن", "Close"),
+                null
+            )
+            .show()
+    }
+
+    // --------------------------------------------------
+    // SETTINGS MENU
+    // --------------------------------------------------
+
+    private fun showSettingsMenu() {
+
+        val options = arrayOf(
+            tr("تنظیم تصویر راهنما", "Guide Image Settings"),
+            tr("تغییر زبان", "Change Language"),
+            tr("درباره برنامه", "About")
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(tr("تنظیمات", "Settings"))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showGuideSettings()
+                    1 -> showLanguageSettings()
+                    2 -> showAbout()
+                }
+            }
+            .setNegativeButton(
+                tr("بستن", "Close"),
+                null
+            )
+            .show()
+    }
+
+    // --------------------------------------------------
+    // LANGUAGE
     // --------------------------------------------------
 
     private fun showLanguageSettings() {
@@ -529,7 +620,6 @@ class MainActivity : AppCompatActivity() {
                     .apply()
 
                 dialog.dismiss()
-
                 recreate()
             }
             .setNegativeButton(
@@ -540,7 +630,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // تنظیم خطوط و محدوده ROI
+    // LINE SETUP
     // --------------------------------------------------
 
     private fun enterSetupMode() {
@@ -573,10 +663,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // A previously saved session must not be included again in the next one.
         if (sessionSaved) {
             totalCount = 0
-            countText.text = tr("تعداد: 0", "Count: 0")
+            countText.text = "0"
         }
 
         sessionSaved = false
@@ -614,7 +703,6 @@ class MainActivity : AppCompatActivity() {
             .putFloat("line_bottom_ratio", overlay.lineBottom / height)
             .putFloat("roi_left_ratio", overlay.roiLeft / width)
             .putFloat("roi_right_ratio", overlay.roiRight / width)
-            // Keep legacy values for compatibility with older app versions.
             .putFloat("line_top", overlay.lineTop)
             .putFloat("line_bottom", overlay.lineBottom)
             .putFloat("roi_left", overlay.roiLeft)
@@ -658,13 +746,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // تصویر راهنما
+    // GUIDE IMAGE
     // --------------------------------------------------
 
     private fun loadGuideImage() {
 
         try {
-
             guideBitmap = assets.open("guide_overlay.jpg").use { stream ->
                 BitmapFactory.decodeStream(stream)
             }
@@ -681,7 +768,6 @@ class MainActivity : AppCompatActivity() {
                 if (guideVisible) View.VISIBLE else View.GONE
 
         } catch (e: Exception) {
-
             guideBitmap = null
             guideImage.visibility = View.GONE
 
@@ -694,7 +780,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // تنظیمات تصویر راهنما
+    // GUIDE SETTINGS
     // --------------------------------------------------
 
     private fun showGuideSettings() {
@@ -743,8 +829,6 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
-        // شفافیت
-
         val opacityLabel = TextView(this).apply {
             text = tr(
                 "شفافیت تصویر راهنما: ${guideOpacity * 100 / 255}%",
@@ -769,8 +853,6 @@ class MainActivity : AppCompatActivity() {
                 dp(48)
             )
         )
-
-        // بزرگ‌نمایی
 
         val zoomLabel = TextView(this).apply {
             text = tr(
@@ -811,7 +893,6 @@ class MainActivity : AppCompatActivity() {
         content.addView(helpText)
 
         guideSwitch.setOnCheckedChangeListener { _, checked ->
-
             guideVisible = checked
 
             guideImage.visibility =
@@ -830,7 +911,6 @@ class MainActivity : AppCompatActivity() {
                     progress: Int,
                     fromUser: Boolean
                 ) {
-
                     guideOpacity = progress * 255 / 100
                     guideImage.alpha = guideOpacity / 255f
 
@@ -840,15 +920,8 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                override fun onStartTrackingTouch(
-                    seekBar: SeekBar?
-                ) {
-                }
-
-                override fun onStopTrackingTouch(
-                    seekBar: SeekBar?
-                ) {
-
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
                     prefs.edit()
                         .putInt("guide_opacity", guideOpacity)
                         .apply()
@@ -864,7 +937,6 @@ class MainActivity : AppCompatActivity() {
                     progress: Int,
                     fromUser: Boolean
                 ) {
-
                     guideZoom = progress + 50
 
                     zoomLabel.text = tr(
@@ -875,15 +947,8 @@ class MainActivity : AppCompatActivity() {
                     updateGuideSize()
                 }
 
-                override fun onStartTrackingTouch(
-                    seekBar: SeekBar?
-                ) {
-                }
-
-                override fun onStopTrackingTouch(
-                    seekBar: SeekBar?
-                ) {
-
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
                     prefs.edit()
                         .putInt("guide_zoom", guideZoom)
                         .apply()
@@ -896,7 +961,6 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(
                 tr("ذخیره و بستن", "Save and Close")
             ) { _, _ ->
-
                 prefs.edit()
                     .putBoolean("guide_visible", guideVisible)
                     .putInt("guide_opacity", guideOpacity)
@@ -937,7 +1001,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // دوربین
+    // CAMERA
     // --------------------------------------------------
 
     private fun startCamera() {
@@ -1016,10 +1080,7 @@ class MainActivity : AppCompatActivity() {
 
                                     totalCount += trackingResult.newCounts
 
-                                    countText.text = tr(
-                                        "تعداد: $totalCount",
-                                        "Count: $totalCount"
-                                    )
+                                    countText.text = totalCount.toString()
                                 }
                             }
                         }
@@ -1082,7 +1143,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // توقف شمارش
+    // STOP
     // --------------------------------------------------
 
     private fun stopCounting() {
@@ -1110,7 +1171,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // ریست
+    // RESET
     // --------------------------------------------------
 
     private fun resetCounting() {
@@ -1135,10 +1196,7 @@ class MainActivity : AppCompatActivity() {
 
                 tracker.reset()
 
-                countText.text = tr(
-                    "تعداد: 0",
-                    "Count: 0"
-                )
+                countText.text = "0"
 
                 sessionSaved = false
                 running = true
@@ -1160,7 +1218,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // تاریخچه
+    // HISTORY
     // --------------------------------------------------
 
     private fun saveCurrentSession() {
@@ -1190,9 +1248,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun historyIncludingCurrent(): JSONArray {
         val history = getHistory()
+
         if (totalCount > 0 && !sessionSaved) {
             history.put(createSessionRecord())
         }
+
         return history
     }
 
@@ -1294,7 +1354,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // آمار
+    // STATISTICS
     // --------------------------------------------------
 
     private fun showStatistics() {
@@ -1396,7 +1456,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // اکسل
+    // EXCEL
     // --------------------------------------------------
 
     private fun exportExcel() {
@@ -1530,8 +1590,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             var total = 0
+
             for (i in 0 until history.length()) {
-                total += history.getJSONObject(i).optInt("count").coerceAtLeast(0)
+                total += history.getJSONObject(i)
+                    .optInt("count")
+                    .coerceAtLeast(0)
             }
 
             val totalRow = history.length() + 3
@@ -1539,7 +1602,10 @@ class MainActivity : AppCompatActivity() {
             val rows = StringBuilder()
 
             val title = xmlEscape(
-                tr("گزارش شمارش کیسه‌های قند", "Sugar Bag Counting Report")
+                tr(
+                    "گزارش شمارش کیسه‌های قند",
+                    "Sugar Bag Counting Report"
+                )
             )
 
             val headers = if (isEnglish) {
@@ -1562,6 +1628,7 @@ class MainActivity : AppCompatActivity() {
             )
 
             for (i in 0 until history.length()) {
+
                 val item = history.getJSONObject(i)
                 val row = i + 3
                 val date = xmlEscape(item.optString("date"))
@@ -1578,7 +1645,10 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-            val totalLabel = xmlEscape(tr("مجموع کل", "Grand Total"))
+            val totalLabel = xmlEscape(
+                tr("مجموع کل", "Grand Total")
+            )
+
             rows.append(
                 "<row r=\"$totalRow\" ht=\"24\" customHeight=\"1\">" +
                     "<c r=\"C$totalRow\" s=\"4\" t=\"inlineStr\"><is><t>$totalLabel</t></is></c>" +
@@ -1596,7 +1666,9 @@ class MainActivity : AppCompatActivity() {
                 """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>"""
             )
 
-            val sheetName = xmlEscape(tr("گزارش شمارش", "Counting Report"))
+            val sheetName = xmlEscape(
+                tr("گزارش شمارش", "Counting Report")
+            )
 
             addEntry(
                 "xl/workbook.xml",
@@ -1653,7 +1725,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // درباره برنامه
+    // ABOUT
     // --------------------------------------------------
 
     private fun showAbout() {
@@ -1765,7 +1837,10 @@ class MainActivity : AppCompatActivity() {
 
         addAboutText(
             content,
-            tr("نسخه ${BuildConfig.VERSION_NAME}", "Version ${BuildConfig.VERSION_NAME}"),
+            tr(
+                "نسخه ${BuildConfig.VERSION_NAME}",
+                "Version ${BuildConfig.VERSION_NAME}"
+            ),
             11f,
             false
         )
@@ -1843,10 +1918,7 @@ class MainActivity : AppCompatActivity() {
 
         addAboutText(
             content,
-            tr(
-                "اطلاعات تماس",
-                "Contact Information"
-            ),
+            tr("اطلاعات تماس", "Contact Information"),
             17f,
             true
         )
@@ -1887,6 +1959,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         val licenseInfo = LicenseManager.getLicenseInfo(this)
+
         val licenseDetailsText = TextView(this).apply {
             text = if (isEnglish) {
                 "Status: ${LicenseManager.getStatusText(this@MainActivity)}\n" +
@@ -1982,7 +2055,6 @@ class MainActivity : AppCompatActivity() {
     private fun openEmail(email: String) {
 
         try {
-
             val intent = Intent(
                 Intent.ACTION_SENDTO,
                 Uri.parse("mailto:$email")
@@ -1991,7 +2063,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
 
         } catch (e: Exception) {
-
             Log.e("SugarCounter", "Email app unavailable", e)
         }
     }
@@ -2151,7 +2222,6 @@ class MainActivity : AppCompatActivity() {
     ) {
 
         val text = TextView(this).apply {
-
             this.text = value
             textSize = size
 
@@ -2180,7 +2250,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // تاریخ
+    // DATE
     // --------------------------------------------------
 
     private fun getCurrentTime(): String {
@@ -2263,7 +2333,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------
-    // پایان فعالیت
+    // DESTROY
     // --------------------------------------------------
 
     override fun onDestroy() {
@@ -2273,7 +2343,11 @@ class MainActivity : AppCompatActivity() {
         try {
             saveCurrentSession()
         } catch (e: Exception) {
-            Log.e("SugarCounter", "Could not save the unfinished session", e)
+            Log.e(
+                "SugarCounter",
+                "Could not save the unfinished session",
+                e
+            )
         }
 
         executor.shutdown()
