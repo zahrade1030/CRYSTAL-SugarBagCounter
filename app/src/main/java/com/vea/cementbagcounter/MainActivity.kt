@@ -59,6 +59,12 @@ class MainActivity : AppCompatActivity() {
     private var guideVisible = true
     private var guideOpacity = 48
 
+    // Change this PIN before distributing the APK. This is a UI lock, not strong security.
+    private val engineeringPin = "4826"
+    private var guideScale = 0.75f
+    private var guideOffsetXdp = 0
+    private var guideOffsetYdp = 0
+
     private lateinit var countText: TextView
     private lateinit var statusText: TextView
     private lateinit var detector: YoloDetector
@@ -328,6 +334,12 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, dp(1), 0, 0)
         }
 
+        // Hidden engineering entry: long-press the CRYSTAL.BIN title.
+        appTitle.setOnLongClickListener {
+            showEngineeringPinDialog()
+            true
+        }
+
         header.addView(appTitle)
         header.addView(subtitle)
 
@@ -339,6 +351,9 @@ class MainActivity : AppCompatActivity() {
 
         guideVisible = prefs.getBoolean("guide_visible", true)
         guideOpacity = prefs.getInt("guide_opacity", 48).coerceIn(0, 255)
+        guideScale = prefs.getFloat("guide_scale", 0.75f).coerceIn(0.40f, 1.50f)
+        guideOffsetXdp = prefs.getInt("guide_offset_x_dp", 0).coerceIn(-300, 300)
+        guideOffsetYdp = prefs.getInt("guide_offset_y_dp", 0).coerceIn(-300, 300)
 
         guideImage = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -856,8 +871,8 @@ class MainActivity : AppCompatActivity() {
 
         val helpText = TextView(this).apply {
             text = tr(
-                "تصویر راهنما ثابت، وسط تصویر دوربین و با بزرگ‌نمایی ۷۵٪ نمایش داده می‌شود. فقط شفافیت قابل تغییر است.",
-                "The guide stays centered at a fixed 75% size. Only opacity can be adjusted."
+                "اندازه و موقعیت تصویر راهنما توسط مدیر تنظیم می‌شود. شما فقط می‌توانید شفافیت را تغییر دهید.",
+                "Guide size and position are set by the administrator. You can only adjust opacity."
             )
             textSize = 12f
             setTextColor(Color.LTGRAY)
@@ -926,23 +941,150 @@ class MainActivity : AppCompatActivity() {
         if (!::guideImage.isInitialized) return
 
         val parent = guideImage.parent as? FrameLayout ?: return
-
         val width = parent.width
         val height = parent.height
-
         if (width <= 0 || height <= 0) return
 
-        // Fixed guide image size: 75% of the camera-frame reference size.
-        val guideWidth = (width * 0.88f * 0.75f).toInt()
-        val guideHeight = (height * 0.82f * 0.75f).toInt()
+        val guideWidth = (width * 0.88f * guideScale).toInt()
+        val guideHeight = (height * 0.82f * guideScale).toInt()
 
         guideImage.layoutParams = FrameLayout.LayoutParams(
             guideWidth,
             guideHeight,
             Gravity.CENTER
         )
-
+        guideImage.translationX = dp(guideOffsetXdp).toFloat()
+        guideImage.translationY = dp(guideOffsetYdp).toFloat()
         guideImage.requestLayout()
+    }
+
+    // --------------------------------------------------
+    // ENGINEERING MODE — hidden, PIN-protected
+    // --------------------------------------------------
+
+    private fun showEngineeringPinDialog() {
+        val pinInput = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = tr("کد مدیر", "Administrator PIN")
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(tr("ورود مدیر", "Administrator Access"))
+            .setMessage(tr("کد مخصوص مدیر را وارد کنید.", "Enter the administrator PIN."))
+            .setView(pinInput)
+            .setNegativeButton(tr("لغو", "Cancel"), null)
+            .setPositiveButton(tr("ورود", "Enter")) { _, _ ->
+                if (pinInput.text.toString() == engineeringPin) {
+                    showEngineeringPanel()
+                } else {
+                    AlertDialog.Builder(this)
+                        .setMessage(tr("کد اشتباه است.", "Incorrect PIN."))
+                        .setPositiveButton(tr("باشه", "OK"), null)
+                        .show()
+                }
+            }
+            .show()
+    }
+
+    private fun showEngineeringPanel() {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(12))
+            setBackgroundColor(industrialBlack)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+
+        fun addSlider(
+            labelText: String,
+            min: Int,
+            max: Int,
+            initial: Int,
+            onChange: (Int) -> Unit
+        ): SeekBar {
+            val label = TextView(this).apply {
+                text = labelText
+                textSize = 14f
+                setTextColor(industrialLightGold)
+                gravity = Gravity.CENTER
+                setPadding(0, dp(8), 0, dp(4))
+            }
+            content.addView(label)
+
+            val slider = SeekBar(this).apply {
+                this.max = max - min
+                progress = (initial - min).coerceIn(0, max - min)
+            }
+            content.addView(slider)
+            slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    val value = progress + min
+                    label.text = "$labelText: $value"
+                    onChange(value)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+            label.text = "$labelText: $initial"
+            return slider
+        }
+
+        val scaleSlider = addSlider(
+            tr("اندازه تصویر (درصد)", "Guide size (%)"),
+            40, 150, (guideScale * 100).toInt()
+        ) { value ->
+            guideScale = value / 100f
+            updateGuideSize()
+        }
+
+        val xSlider = addSlider(
+            tr("جابه‌جایی افقی (dp)", "Horizontal offset (dp)"),
+            -300, 300, guideOffsetXdp
+        ) { value ->
+            guideOffsetXdp = value
+            updateGuideSize()
+        }
+
+        val ySlider = addSlider(
+            tr("جابه‌جایی عمودی (dp)", "Vertical offset (dp)"),
+            -300, 300, guideOffsetYdp
+        ) { value ->
+            guideOffsetYdp = value
+            updateGuideSize()
+        }
+
+        val note = TextView(this).apply {
+            text = tr(
+                "تغییرات روی تصویر دوربین اعمال می‌شوند. با ذخیره، تنظیمات مدیر باقی می‌مانند؛ کاربر عادی فقط شفافیت را تغییر می‌دهد.",
+                "Changes preview on the camera. Save to keep administrator settings; regular users can only change opacity."
+            )
+            textSize = 12f
+            setTextColor(Color.LTGRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(6))
+        }
+        content.addView(note)
+
+        AlertDialog.Builder(this)
+            .setTitle(tr("تنظیمات مهندسی تصویر راهنما", "Guide Engineering Settings"))
+            .setView(content)
+            .setNegativeButton(tr("لغو", "Cancel")) { _, _ ->
+                // Restore previously saved engineering values.
+                guideScale = prefs.getFloat("guide_scale", 0.75f).coerceIn(0.40f, 1.50f)
+                guideOffsetXdp = prefs.getInt("guide_offset_x_dp", 0).coerceIn(-300, 300)
+                guideOffsetYdp = prefs.getInt("guide_offset_y_dp", 0).coerceIn(-300, 300)
+                updateGuideSize()
+            }
+            .setPositiveButton(tr("ذخیره تنظیمات", "Save Settings")) { _, _ ->
+                prefs.edit()
+                    .putFloat("guide_scale", guideScale)
+                    .putInt("guide_offset_x_dp", guideOffsetXdp)
+                    .putInt("guide_offset_y_dp", guideOffsetYdp)
+                    .apply()
+                updateGuideSize()
+            }
+            .show()
     }
 
     // --------------------------------------------------
