@@ -58,7 +58,6 @@ class MainActivity : AppCompatActivity() {
 
     private var guideVisible = true
     private var guideOpacity = 48
-    private var guideZoom = 100
 
     private lateinit var countText: TextView
     private lateinit var statusText: TextView
@@ -340,7 +339,6 @@ class MainActivity : AppCompatActivity() {
 
         guideVisible = prefs.getBoolean("guide_visible", true)
         guideOpacity = prefs.getInt("guide_opacity", 48).coerceIn(0, 255)
-        guideZoom = prefs.getInt("guide_zoom", 100).coerceIn(50, 200)
 
         guideImage = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -856,35 +854,10 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
-        val zoomLabel = TextView(this).apply {
-            text = tr(
-                "بزرگ‌نمایی تصویر: ${guideZoom}%",
-                "Guide zoom: ${guideZoom}%"
-            )
-            textSize = 14f
-            setTextColor(industrialLightGold)
-            setPadding(0, dp(12), 0, dp(5))
-        }
-
-        content.addView(zoomLabel)
-
-        val zoomSeekBar = SeekBar(this).apply {
-            max = 150
-            progress = guideZoom - 50
-        }
-
-        content.addView(
-            zoomSeekBar,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(48)
-            )
-        )
-
         val helpText = TextView(this).apply {
             text = tr(
-                "تصویر راهنما متناسب با صفحه دوربین تنظیم می‌شود. بزرگ‌نمایی از ۵۰ تا ۲۰۰ درصد قابل تغییر است.",
-                "The guide image adjusts to the camera screen. Zoom can be changed from 50% to 200%."
+                "تصویر راهنما ثابت، وسط تصویر دوربین و با بزرگ‌نمایی ۷۵٪ نمایش داده می‌شود. فقط شفافیت قابل تغییر است.",
+                "The guide stays centered at a fixed 75% size. Only opacity can be adjusted."
             )
             textSize = 12f
             setTextColor(Color.LTGRAY)
@@ -931,33 +904,6 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        zoomSeekBar.setOnSeekBarChangeListener(
-            object : SeekBar.OnSeekBarChangeListener {
-
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    guideZoom = progress + 50
-
-                    zoomLabel.text = tr(
-                        "بزرگ‌نمایی تصویر: ${guideZoom}%",
-                        "Guide zoom: ${guideZoom}%"
-                    )
-
-                    updateGuideSize()
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                    prefs.edit()
-                        .putInt("guide_zoom", guideZoom)
-                        .apply()
-                }
-            }
-        )
-
         AlertDialog.Builder(this)
             .setView(content)
             .setPositiveButton(
@@ -966,7 +912,6 @@ class MainActivity : AppCompatActivity() {
                 prefs.edit()
                     .putBoolean("guide_visible", guideVisible)
                     .putInt("guide_opacity", guideOpacity)
-                    .putInt("guide_zoom", guideZoom)
                     .apply()
             }
             .setNegativeButton(
@@ -987,11 +932,9 @@ class MainActivity : AppCompatActivity() {
 
         if (width <= 0 || height <= 0) return
 
-        val guideWidth =
-            (width * 0.88f * guideZoom / 100f).toInt()
-
-        val guideHeight =
-            (height * 0.82f * guideZoom / 100f).toInt()
+        // Fixed guide image size: 75% of the camera-frame reference size.
+        val guideWidth = (width * 0.88f * 0.75f).toInt()
+        val guideHeight = (height * 0.82f * 0.75f).toInt()
 
         guideImage.layoutParams = FrameLayout.LayoutParams(
             guideWidth,
