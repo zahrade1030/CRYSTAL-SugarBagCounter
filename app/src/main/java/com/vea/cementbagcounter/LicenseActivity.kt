@@ -92,53 +92,6 @@ class LicenseActivity : Activity() {
             )
         }
 
-        val topBar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val brand = TextView(this).apply {
-            text = "CRYSTAL.BIN"
-            textSize = 17f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(gold)
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        topBar.addView(
-            brand,
-            LinearLayout.LayoutParams(0, dp(45), 1f)
-        )
-
-        val languageButton = createSmallButton(
-            if (isEnglish) "فارسی" else "English"
-        )
-
-        topBar.addView(
-            languageButton,
-            LinearLayout.LayoutParams(
-                dp(90),
-                dp(42)
-            )
-        )
-
-        root.addView(
-            topBar,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(45)
-            )
-        )
-
-        languageButton.setOnClickListener {
-            getSharedPreferences("app_settings", MODE_PRIVATE)
-                .edit()
-                .putString("language", if (isEnglish) "fa" else "en")
-                .apply()
-
-            recreate()
-        }
-
         addSpace(root, 18)
 
         val headerContainer = LinearLayout(this).apply {
@@ -146,35 +99,6 @@ class LicenseActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(10), dp(10), dp(10))
         }
-
-        val logo = TextView(this).apply {
-            text = "C"
-            textSize = 38f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(gold)
-            gravity = Gravity.CENTER
-            background = createCircleBackground(Color.rgb(28, 28, 28), gold)
-        }
-
-        headerContainer.addView(
-            logo,
-            LinearLayout.LayoutParams(dp(72), dp(72)).apply {
-                gravity = Gravity.CENTER
-            }
-        )
-
-        addSpace(headerContainer, 14)
-
-        val title = TextView(this).apply {
-            text = "CRYSTAL.BIN"
-            textSize = 28f
-            setTextColor(gold)
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.08f
-        }
-
-        headerContainer.addView(title)
 
         addSpace(headerContainer, 8)
 
